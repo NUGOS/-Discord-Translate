@@ -5,7 +5,7 @@ import logging
 import os
 
 
-# Налаштування логування
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("discordbot")
 
@@ -72,7 +72,7 @@ async def translate_libretranslate(text, target_lang):
 async def smart_translate(text, target_lang):
     try:
         return await translate_deepl(text, target_lang)
-    except:
+    except Exception:
         return await translate_libretranslate(text, target_lang)
 
 @bot.event
@@ -127,4 +127,5 @@ async def on_reaction_add(reaction, user):
 
         await reaction.message.channel.send(embed=embed)
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+if __name__ == "__main__":
+    bot.run(os.getenv("DISCORD_TOKEN"))
