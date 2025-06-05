@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 import aiohttp
 import logging
+import os
+
 
 # Налаштування логування
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +27,7 @@ FLAGS = {
 }
 FLAG_TO_LANG = {v: k for k, v in FLAGS.items()}
 
-DEEPL_API_KEY = "API-KEY"
+DEEPL_API_KEY = os.getenv("DEEPL_API_KEY")
 TRANSLATE_API = "http://192.168.31.125:5000/translate"
 
 async def translate_deepl(text, target_lang):
@@ -125,4 +127,4 @@ async def on_reaction_add(reaction, user):
 
         await reaction.message.channel.send(embed=embed)
 
-bot.run("TOKEN")
+bot.run(os.getenv("DISCORD_TOKEN"))
