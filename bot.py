@@ -15,6 +15,11 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# channels where messages will be automatically translated
+AUTO_TRANSLATE_CHANNELS = [
+    int(ch) for ch in os.getenv("AUTO_TRANSLATE_CHANNELS", "").split(",") if ch
+]
+
 TARGET_LANGS = ["hu", "nl", "uk", "de", "fr", "pl", "en"]
 FLAGS = {
     "hu": "🇭🇺",
@@ -84,6 +89,12 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    if AUTO_TRANSLATE_CHANNELS and message.channel.id not in AUTO_TRANSLATE_CHANNELS:
+        return
+
+    if message.stickers or "http://" in message.content or "https://" in message.content:
+        return
+
     text = message.content
     author_name = message.author.display_name
     author_avatar = message.author.avatar.url if message.author.avatar else None
@@ -104,28 +115,33 @@ async def on_message(message):
 
 @bot.event
 async def on_reaction_add(reaction, user):
-    if user.bot or reaction.message.author != bot.user:
+    if user.bot:
         return
 
     emoji = str(reaction.emoji)
-    if emoji in FLAG_TO_LANG:
-        lang = FLAG_TO_LANG[emoji]
-        ref_message = reaction.message.reference
-        if ref_message:
-            original = await reaction.message.channel.fetch_message(ref_message.message_id)
-            text = original.content
-        else:
-            text = reaction.message.content
+    if emoji not in FLAG_TO_LANG:
+        return
 
-        translated = await smart_translate(text, lang)
+    lang = FLAG_TO_LANG[emoji]
 
-        author_name = user.display_name
-        author_avatar = user.avatar.url if user.avatar else None
+    if reaction.message.author == bot.user and reaction.message.reference:
+        original = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
+        text = original.content
+    else:
+        text = reaction.message.content
 
-        embed = discord.Embed(description=f"{emoji} {translated}")
-        embed.set_author(name=author_name.upper(), icon_url=author_avatar)
+    if reaction.message.stickers or "http://" in text or "https://" in text:
+        return
 
-        await reaction.message.channel.send(embed=embed)
+    translated = await smart_translate(text, lang)
+
+    author_name = user.display_name
+    author_avatar = user.avatar.url if user.avatar else None
+
+    embed = discord.Embed(description=f"{emoji} {translated}")
+    embed.set_author(name=author_name.upper(), icon_url=author_avatar)
+
+    await reaction.message.channel.send(embed=embed)
 
 if __name__ == "__main__":
     bot.run(os.getenv("DISCORD_TOKEN"))
