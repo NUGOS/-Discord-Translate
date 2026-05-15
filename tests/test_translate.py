@@ -66,6 +66,43 @@ spec.loader.exec_module(bot)
 sys.modules['bot'] = bot
 smart_translate = bot.smart_translate
 
+
+def test_parse_channel_ids_ignores_empty_and_invalid_values():
+    assert bot.parse_channel_ids("123, ,abc,456") == {123, 456}
+
+
+def test_is_translation_channel_requires_configured_channel(monkeypatch):
+    monkeypatch.setattr(bot, "TRANSLATE_CHANNEL_IDS", {123})
+
+    assert bot.is_translation_channel(123)
+    assert not bot.is_translation_channel(456)
+
+
+@pytest.mark.asyncio
+async def test_on_message_ignores_unconfigured_channel(monkeypatch):
+    translate_calls = []
+
+    async def fake_translate(text, lang):
+        translate_calls.append((text, lang))
+        return "translated"
+
+    async def fake_send(*args, **kwargs):
+        raise AssertionError("send should not be called for unconfigured channels")
+
+    monkeypatch.setattr(bot, "TRANSLATE_CHANNEL_IDS", {123})
+    monkeypatch.setattr(bot, "smart_translate", fake_translate)
+
+    message = types.SimpleNamespace(
+        author=types.SimpleNamespace(bot=False, display_name="User", avatar=None),
+        channel=types.SimpleNamespace(id=456, send=fake_send),
+        content="hello",
+        stickers=[],
+    )
+
+    await bot.on_message(message)
+
+    assert translate_calls == []
+
 @pytest.mark.asyncio
 async def test_smart_translate_prefers_deepl(monkeypatch):
     async def fake_deepl(text, lang):

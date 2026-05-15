@@ -1,33 +1,41 @@
 # Discord Translate Bot
 
-Python Discord bot experiment for translating messages into multiple languages.
-
-This is a learning/automation project. It is not part of my main Java backend positioning, but it shows practical integration work with Discord, translation APIs, environment-based configuration, and async message handling.
+Discord bot for translating messages in explicitly configured channels.
 
 ## What It Does
 
-- Reads Discord messages from configured channels
-- Translates text into several target languages
+- Translates only messages from channel IDs listed in `AUTO_TRANSLATE_CHANNELS`
+- Does not translate anything when `AUTO_TRANSLATE_CHANNELS` is empty
 - Uses DeepL first and falls back to LibreTranslate
-- Supports reaction-based translation
+- Supports reaction-based translation only in configured channels
 - Sends translated results as Discord embeds
-
-## Tech Stack
-
-- Python
-- discord.py
-- aiohttp
-- DeepL API
-- LibreTranslate
 
 ## Environment Variables
 
-- `DEEPL_API_KEY` - API key for DeepL translation service
 - `DISCORD_TOKEN` - token for your Discord bot
-- `AUTO_TRANSLATE_CHANNELS` - comma-separated Discord channel IDs where messages will be translated automatically
+- `DEEPL_API_KEY` - API key for DeepL translation service
+- `AUTO_TRANSLATE_CHANNELS` - comma-separated Discord channel IDs where translation is allowed
+- `LIBRETRANSLATE_URL` - LibreTranslate endpoint, for example `http://localhost:5000/translate`
 
-Do not commit real bot tokens or API keys.
+Create a local `.env` file from `.env.example` on the server. Do not commit real bot tokens or API keys.
 
-## Status
+Example:
 
-Learning/pet project. Useful next steps would be Docker packaging, configuration cleanup, tests for translation fallback behavior, and replacing local LibreTranslate URLs with configurable environment variables.
+```env
+DISCORD_TOKEN=your_discord_bot_token
+DEEPL_API_KEY=your_deepl_api_key
+AUTO_TRANSLATE_CHANNELS=123456789012345678
+LIBRETRANSLATE_URL=http://localhost:5000/translate
+```
+
+For multiple allowed channels:
+
+```env
+AUTO_TRANSLATE_CHANNELS=123456789012345678,987654321098765432
+```
+
+## Install
+
+```bash
+python3 -m pip install -r requirements.txt
+```

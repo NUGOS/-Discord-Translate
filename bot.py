@@ -5,9 +5,23 @@ import logging
 import os
 
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("discordbot")
+
+
+def parse_channel_ids(raw_value):
+    channel_ids = set()
+    for raw_channel_id in raw_value.split(","):
+        raw_channel_id = raw_channel_id.strip()
+        if not raw_channel_id:
+            continue
+
+        try:
+            channel_ids.add(int(raw_channel_id))
+        except ValueError:
+            logger.warning("Ignoring invalid Discord channel ID: %s", raw_channel_id)
+
+    return channel_ids
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -15,10 +29,7 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# channels where messages will be automatically translated
-AUTO_TRANSLATE_CHANNELS = [
-    int(ch) for ch in os.getenv("AUTO_TRANSLATE_CHANNELS", "").split(",") if ch
-]
+TRANSLATE_CHANNEL_IDS = parse_channel_ids(os.getenv("AUTO_TRANSLATE_CHANNELS", ""))
 
 TARGET_LANGS = ["hu", "nl", "uk", "de", "fr", "pl", "en"]
 FLAGS = {
@@ -33,7 +44,11 @@ FLAGS = {
 FLAG_TO_LANG = {v: k for k, v in FLAGS.items()}
 
 DEEPL_API_KEY = os.getenv("DEEPL_API_KEY")
-TRANSLATE_API = "http://192.168.31.125:5000/translate"
+TRANSLATE_API = os.getenv("LIBRETRANSLATE_URL", "http://localhost:5000/translate")
+
+
+def is_translation_channel(channel_id):
+    return channel_id in TRANSLATE_CHANNEL_IDS
 
 async def translate_deepl(text, target_lang):
     url = "https://api-free.deepl.com/v2/translate"
@@ -82,14 +97,21 @@ async def smart_translate(text, target_lang):
 
 @bot.event
 async def on_ready():
-    logger.info(f"✅ Logged in as {bot.user.name}")
+    logger.info("Logged in as %s", bot.user.name)
+    if TRANSLATE_CHANNEL_IDS:
+        logger.info(
+            "Translation enabled for Discord channel IDs: %s",
+            ", ".join(str(channel_id) for channel_id in sorted(TRANSLATE_CHANNEL_IDS)),
+        )
+    else:
+        logger.warning("AUTO_TRANSLATE_CHANNELS is empty; translation is disabled.")
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    if AUTO_TRANSLATE_CHANNELS and message.channel.id not in AUTO_TRANSLATE_CHANNELS:
+    if not is_translation_channel(message.channel.id):
         return
 
     if message.stickers or "http://" in message.content or "https://" in message.content:
@@ -116,6 +138,9 @@ async def on_message(message):
 @bot.event
 async def on_reaction_add(reaction, user):
     if user.bot:
+        return
+
+    if not is_translation_channel(reaction.message.channel.id):
         return
 
     emoji = str(reaction.emoji)
